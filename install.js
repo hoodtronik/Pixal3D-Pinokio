@@ -16,6 +16,11 @@
 // CLAUDE-NOTE (cuda): We do NOT install the `cuda-toolkit-12-4` meta package — on Ubuntu
 // 24.04 it pulls nsight-systems → libtinfo5, which is uninstallable and breaks the apt
 // step. We install only the build pieces we actually need (nvcc + cudart/libraries dev).
+//
+// CLAUDE-NOTE (conda ToS): recent Miniconda prompts to accept the Anaconda Terms of
+// Service for the defaults channels on first `conda create`, which hangs forever in a
+// non-interactive shell. We accept it explicitly after install and also export
+// CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes so setup.sh's `conda create` never blocks.
 module.exports = {
   requires: {
     bundle: "ai"
@@ -43,7 +48,7 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y build-essential git wget curl ca-certificates ninja-build libjpeg-dev libgl1 libglib2.0-0; wget -q https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring.deb; dpkg -i /tmp/cuda-keyring.deb; apt-get update; apt-get install -y cuda-compiler-12-4 cuda-cudart-dev-12-4 cuda-libraries-dev-12-4 cuda-nvtx-12-4; test -d /root/miniconda3 || (wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && bash /tmp/miniconda.sh -b -p /root/miniconda3); echo PROVISION_DONE"'
+        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y build-essential git wget curl ca-certificates ninja-build libjpeg-dev libgl1 libglib2.0-0; wget -q https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring.deb; dpkg -i /tmp/cuda-keyring.deb; apt-get update; apt-get install -y cuda-compiler-12-4 cuda-cudart-dev-12-4 cuda-libraries-dev-12-4 cuda-nvtx-12-4; test -d /root/miniconda3 || (wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && bash /tmp/miniconda.sh -b -p /root/miniconda3); source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main --channel https://repo.anaconda.com/pkgs/r || true; echo PROVISION_DONE"'
       }
     },
     // 4) Clone TRELLIS.2 (recursive) and run its setup.sh to build all CUDA extensions
@@ -52,7 +57,7 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; source /root/miniconda3/etc/profile.d/conda.sh; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; export TORCH_CUDA_ARCH_LIST=\\$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | xargs); mkdir -p /opt/pixal3d; cd /opt/pixal3d; test -d TRELLIS.2 || git clone -b main https://github.com/microsoft/TRELLIS.2.git --recursive; cd TRELLIS.2; . ./setup.sh --new-env --basic --flash-attn --nvdiffrast --nvdiffrec --cumesh --o-voxel --flexgemm; echo TRELLIS_SETUP_DONE"'
+        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; export TORCH_CUDA_ARCH_LIST=\\$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | xargs); mkdir -p /opt/pixal3d; cd /opt/pixal3d; test -d TRELLIS.2 || git clone -b main https://github.com/microsoft/TRELLIS.2.git --recursive; cd TRELLIS.2; . ./setup.sh --new-env --basic --flash-attn --nvdiffrast --nvdiffrec --cumesh --o-voxel --flexgemm; echo TRELLIS_SETUP_DONE"'
       }
     },
     // 5) Clone Pixal3D and install its extra deps into the same trellis2 env.
@@ -60,7 +65,7 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; cd /opt/pixal3d; test -d Pixal3D || git clone https://github.com/TencentARC/Pixal3D.git; cd Pixal3D; pip install -r requirements.txt; NATTEN_CUDA_ARCH=\\$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | xargs) NATTEN_N_WORKERS=\\$(nproc) pip install natten==0.21.0 --no-build-isolation; pip install https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl; echo PIXAL3D_DEPS_DONE"'
+        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda activate trellis2; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; cd /opt/pixal3d; test -d Pixal3D || git clone https://github.com/TencentARC/Pixal3D.git; cd Pixal3D; pip install -r requirements.txt; NATTEN_CUDA_ARCH=\\$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | xargs) NATTEN_N_WORKERS=\\$(nproc) pip install natten==0.21.0 --no-build-isolation; pip install https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl; echo PIXAL3D_DEPS_DONE"'
       }
     },
     // 6) Pre-warm the Hugging Face cache so the first launch is fast. Tolerant of
@@ -68,7 +73,7 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2; huggingface-cli download microsoft/TRELLIS.2-4B || true; huggingface-cli download TencentARC/Pixal3D || true; echo WEIGHTS_PREFETCH_DONE"'
+        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda activate trellis2; huggingface-cli download microsoft/TRELLIS.2-4B || true; huggingface-cli download TencentARC/Pixal3D || true; echo WEIGHTS_PREFETCH_DONE"'
       }
     },
     // 7) VERIFY the install really succeeded. CLAUDE-NOTE: Pinokio's shell.run does NOT
@@ -79,7 +84,7 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2 && python -c \\"import torch, natten, utils3d, o_voxel\\" && test -f /opt/pixal3d/Pixal3D/app.py && echo PIXAL3D_INSTALL_VERIFIED"',
+        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda activate trellis2 && python -c \\"import torch, natten, utils3d, o_voxel\\" && test -f /opt/pixal3d/Pixal3D/app.py && echo PIXAL3D_INSTALL_VERIFIED"',
         on: [{
           "event": "/PIXAL3D_INSTALL_VERIFIED/",
           "done": true
