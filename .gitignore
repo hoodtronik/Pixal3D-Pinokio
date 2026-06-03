@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+
+# WSL2 distro vhdx (multi-GB, machine-specific) created by install.js
+wsl/
+
+# Downloaded Ubuntu rootfs tarball
+cache/
+
+# Install-state sentinel written at the end of install.js
+INSTALLED
