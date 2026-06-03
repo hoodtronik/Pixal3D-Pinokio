@@ -9,7 +9,10 @@ module.exports = {
     {
       method: "shell.run",
       params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=$CUDA_HOME/bin:$PATH; export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH; cd /opt/pixal3d/Pixal3D; python app.py"',
+        // CLAUDE-NOTE (shell): inner-bash `$` is escaped as `\$` — the outer Pinokio shell
+        // is bash-like and would otherwise expand $PATH/$CUDA_HOME into the command text
+        // (see install.js note).
+        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; cd /opt/pixal3d/Pixal3D; python app.py"',
         on: [{
           // CLAUDE-NOTE: Match the canonical system/examples/mochi/start.js pattern
           // EXACTLY — no capture group, and read the whole match via input.event[0].
