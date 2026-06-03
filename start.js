@@ -1,24 +1,21 @@
-// CLAUDE-NOTE: Launches the Pixal3D Gradio demo inside the "pixal3d" WSL2 distro.
-// Gradio prints "Running on local URL:  http://127.0.0.1:7860"; WSL2 localhost
-// forwarding makes that reachable from the Windows host, so Pinokio opens it directly.
-// app.py is left unmodified (don't touch the app folder) — it calls launch(share=True),
-// but the local URL is printed first, which is what we capture below.
+// CLAUDE-NOTE: Launches the Pixal3D Gradio demo from the Python 3.12 venv created by
+// install.js. build:true gives the shell an MSVC/CUDA build env in case Triton (flex_gemm)
+// needs to JIT-compile kernels on first run. The app prints "Running on local URL:
+// http://127.0.0.1:7860", which we capture with the canonical mochi pattern.
+// app.py is left unmodified; it calls launch(share=True) but prints the local URL first.
 module.exports = {
   daemon: true,
   run: [
     {
       method: "shell.run",
       params: {
-        // CLAUDE-NOTE (shell): inner-bash `$` is escaped as `\$` — the outer Pinokio shell
-        // is bash-like and would otherwise expand $PATH/$CUDA_HOME into the command text
-        // (see install.js note).
-        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; cd /opt/pixal3d/Pixal3D; python app.py"',
+        venv: "env",
+        path: "app",
+        build: true,
+        message: [
+          "python app.py"
+        ],
         on: [{
-          // CLAUDE-NOTE: Match the canonical system/examples/mochi/start.js pattern
-          // EXACTLY — no capture group, and read the whole match via input.event[0].
-          // The capture-group + input.event[1] form left the template unsubstituted at
-          // runtime ("{{input.event[1]}}"), which Pinokio then tried to stat as a path.
-          // The first http URL printed is the local Gradio URL.
           "event": "/http:\/\/[0-9.:]+/",
           "done": true
         }]
@@ -27,8 +24,6 @@ module.exports = {
     {
       method: "local.set",
       params: {
-        // input.event is the regex match object from the previous step; index 0 is the
-        // full matched URL.
         url: "{{input.event[0]}}"
       }
     }

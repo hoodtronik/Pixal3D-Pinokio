@@ -1,11 +1,14 @@
 node_modules
 .DS_Store
 
-# WSL2 distro vhdx (multi-GB, machine-specific) created by install.js
-wsl/
+# Cloned Pixal3D app + Python venv (created by install.js)
+app/
 
-# Downloaded Ubuntu rootfs tarball
-cache/
+# Pinokio runtime artifacts
+logs/
+ENVIRONMENT
 
-# Install-state sentinel written at the end of install.js
-INSTALLED
+# Auto-generated agent-guide copies dropped in by Pinokio (mirror of parent CLAUDE.md)
+CLAUDE.md
+GEMINI.md
+QWEN.md

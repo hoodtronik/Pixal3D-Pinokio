@@ -1,6 +1,6 @@
 {
   "title": "Pixal3D",
-  "description": "Pixel-Aligned 3D Generation from Images (SIGGRAPH 2026). Generate high-fidelity 3D GLB assets with PBR textures from a single image. This launcher runs the official TRELLIS.2-based Gradio demo inside an isolated Ubuntu WSL2 environment with NVIDIA GPU passthrough.",
+  "description": "Pixel-Aligned 3D Generation from Images (SIGGRAPH 2026). Generate high-fidelity 3D GLB assets with PBR textures from a single image, powered by the TRELLIS.2 backbone. Native Windows install using prebuilt CUDA wheels (Python 3.12 / torch 2.8 / CUDA 12.8).",
   "icon": "icon.png",
   "platform": ["win32"],
   "arch": ["x64"],

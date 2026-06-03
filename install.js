@@ -1,105 +1,56 @@
-// CLAUDE-NOTE: Pixal3D's backbone (microsoft/TRELLIS.2) is Linux-only and depends on
-// custom CUDA wheels (flash-attn, nvdiffrast, nvdiffrec, cumesh, flexgemm, o_voxel,
-// natten) that have NO native Windows builds. On Windows the only supported path is an
-// isolated Ubuntu WSL2 distro ("pixal3d") with NVIDIA GPU passthrough. This installer
-// imports a fresh Ubuntu rootfs, installs the CUDA 12.4 build tools + Miniconda, runs the
-// official TRELLIS.2 setup.sh to build all CUDA extensions, then clones Pixal3D and
-// installs its extra deps. Everything lives inside the distro (native ext4) for fast
-// compilation; the distro vhdx lives under ./wsl so Reset can remove it cleanly.
+// CLAUDE-NOTE: Native-Windows install of the standalone Pixal3D Gradio app.
+// Pixal3D is built on microsoft/TRELLIS.2 and needs CUDA extensions (flash_attn,
+// nvdiffrast, nvdiffrec, cumesh, flex_gemm, o_voxel, natten). The community has prebuilt
+// Windows wheels for the whole stack at github.com/PozzettiAndrea/cuda-wheels. We pin the
+// one coherent combo that has them all AND covers Ada (sm_89): Python 3.12 + torch 2.8.0
+// + CUDA 12.8 (cp312/cu128torch2.8/win_amd64). The natten wheel from that repo includes
+// native sm_89 SASS (the Blackwell natten wheels in the upstream community docs do NOT
+// work on Ada — avoid them). Verified: every wheel URL below returns 200 from the GitHub
+// releases API for the cu128torch2.8-cp312 tag.
 //
-// CLAUDE-NOTE (shell): Pinokio's shell.run wrapper on Windows here is BASH-like, not cmd
-// — verified from logs: it expanded $PATH into the command text and broke inner parsing.
-// So every `$` meant for the INNER WSL bash is escaped as `\$` (written `\\$` in JS), and
-// `$(...)` as `\$(...)`. The outer shell then passes a literal `$` through to `bash -lc`,
-// where it is expanded in the Linux/WSL context.
-//
-// CLAUDE-NOTE (cuda): We do NOT install the `cuda-toolkit-12-4` meta package — on Ubuntu
-// 24.04 it pulls nsight-systems → libtinfo5, which is uninstallable and breaks the apt
-// step. We install only the build pieces we actually need (nvcc + cudart/libraries dev).
-//
-// CLAUDE-NOTE (conda ToS): recent Miniconda prompts to accept the Anaconda Terms of
-// Service for the defaults channels on first `conda create`, which hangs forever in a
-// non-interactive shell. We accept it explicitly after install and also export
-// CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes so setup.sh's `conda create` never blocks.
+// CLAUDE-NOTE: kernel wheels are installed with --no-deps so pip cannot swap out the
+// torch 2.8.0 build they were compiled against. flex_gemm uses Triton, so we also install
+// triton-windows. `spaces` is required because the upstream app.py uses @spaces.GPU.
+const WHL = "https://github.com/PozzettiAndrea/cuda-wheels/releases/download"
 module.exports = {
   requires: {
     bundle: "ai"
   },
   run: [
-    // 1) Download the official Ubuntu 24.04 (noble) WSL rootfs tarball.
-    {
-      method: "fs.download",
-      params: {
-        uri: "https://cloud-images.ubuntu.com/wsl/releases/noble/current/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz",
-        dir: "cache"
-      }
-    },
-    // 2) Import it as an isolated, dedicated WSL2 distro named "pixal3d".
-    //    Unregister any previous "pixal3d" first so re-running install is idempotent.
+    // 1) Clone the Pixal3D app into ./app (launcher files stay in the project root).
     {
       method: "shell.run",
       params: {
-        message: 'wsl --unregister pixal3d; wsl --import pixal3d "{{cwd}}/wsl" "{{cwd}}/cache/ubuntu-noble-wsl-amd64-wsl.rootfs.tar.gz" --version 2'
+        message: "git clone https://github.com/TencentARC/Pixal3D.git app"
       }
     },
-    // 3) System packages + CUDA 12.4 build tools (nvcc etc.) + Miniconda.
-    //    The GPU driver comes from the Windows host via WSL passthrough, so we use NVIDIA's
-    //    "wsl-ubuntu" repo. Install only the build sub-packages (no nsight/libtinfo5).
+    // 2) Create a Python 3.12 venv and install the full stack into it.
     {
       method: "shell.run",
       params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; export DEBIAN_FRONTEND=noninteractive; apt-get update; apt-get install -y build-essential git wget curl ca-certificates ninja-build libjpeg-dev libgl1 libglib2.0-0; wget -q https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda-keyring.deb; dpkg -i /tmp/cuda-keyring.deb; apt-get update; apt-get install -y cuda-compiler-12-4 cuda-cudart-dev-12-4 cuda-libraries-dev-12-4 cuda-nvtx-12-4; test -d /root/miniconda3 || (wget -q https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O /tmp/miniconda.sh && bash /tmp/miniconda.sh -b -p /root/miniconda3); source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main --channel https://repo.anaconda.com/pkgs/r || true; echo PROVISION_DONE"'
-      }
-    },
-    // 4) Clone TRELLIS.2 (recursive) and run its setup.sh to build all CUDA extensions
-    //    into a fresh conda env "trellis2" (python 3.10, torch 2.6 / cu124). This step
-    //    compiles flash-attn/nvdiffrast/cumesh/flexgemm/o_voxel and takes a long time.
-    {
-      method: "shell.run",
-      params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; export TORCH_CUDA_ARCH_LIST=\\$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | xargs); mkdir -p /opt/pixal3d; cd /opt/pixal3d; test -d TRELLIS.2 || git clone -b main https://github.com/microsoft/TRELLIS.2.git --recursive; cd TRELLIS.2; . ./setup.sh --new-env --basic --flash-attn --nvdiffrast --nvdiffrec --cumesh --o-voxel --flexgemm; echo TRELLIS_SETUP_DONE"'
-      }
-    },
-    // 5) Clone Pixal3D and install its extra deps into the same trellis2 env.
-    //    natten is built against the detected GPU compute capability (Ada = 8.9).
-    {
-      method: "shell.run",
-      params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "set -e; source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda activate trellis2; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=\\$CUDA_HOME/bin:\\$PATH; export LD_LIBRARY_PATH=\\$CUDA_HOME/lib64:\\$LD_LIBRARY_PATH; cd /opt/pixal3d; test -d Pixal3D || git clone https://github.com/TencentARC/Pixal3D.git; cd Pixal3D; pip install -r requirements.txt; NATTEN_CUDA_ARCH=\\$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -n1 | xargs) NATTEN_N_WORKERS=\\$(nproc) pip install natten==0.21.0 --no-build-isolation; pip install https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl; echo PIXAL3D_DEPS_DONE"'
-      }
-    },
-    // 6) Pre-warm the Hugging Face cache so the first launch is fast. Tolerant of
-    //    failure (|| true): if a repo id differs, weights still download on first run.
-    {
-      method: "shell.run",
-      params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda activate trellis2; huggingface-cli download microsoft/TRELLIS.2-4B || true; huggingface-cli download TencentARC/Pixal3D || true; echo WEIGHTS_PREFETCH_DONE"'
-      }
-    },
-    // 7) VERIFY the install really succeeded. CLAUDE-NOTE: Pinokio's shell.run does NOT
-    //    halt the script on a non-zero exit, so earlier steps can fail and the script
-    //    still reaches here. We therefore gate the INSTALLED sentinel on a real check
-    //    inside WSL (key packages import + app.py present) that prints a unique token,
-    //    captured via the `on` matcher. \" escapes the inner python -c quotes.
-    {
-      method: "shell.run",
-      params: {
-        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; export CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes; conda activate trellis2 && python -c \\"import torch, natten, utils3d, o_voxel\\" && test -f /opt/pixal3d/Pixal3D/app.py && echo PIXAL3D_INSTALL_VERIFIED"',
-        on: [{
-          "event": "/PIXAL3D_INSTALL_VERIFIED/",
-          "done": true
-        }]
-      }
-    },
-    // 8) Only write the sentinel when step 7 actually matched the verification token.
-    //    If verification failed, input.event is undefined -> `when` is falsy -> skipped,
-    //    so the menu keeps offering Install instead of falsely showing "installed".
-    {
-      method: "fs.write",
-      when: "{{input.event && input.event[0]}}",
-      params: {
-        path: "INSTALLED",
-        text: "pixal3d"
+        path: "app",
+        build: true,
+        message: [
+          // 3.12 venv (uv fetches a managed CPython 3.12 if needed).
+          "uv venv --python 3.12 env",
+          // PyTorch 2.8.0 + cu128 first — every CUDA wheel is built against it.
+          "uv pip install --python env/Scripts/python.exe torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128",
+          // Triton (flex_gemm runtime) + the upstream pure-Python deps + HF spaces shim.
+          "uv pip install --python env/Scripts/python.exe -U \"triton-windows<3.7\"",
+          "uv pip install --python env/Scripts/python.exe -r requirements.txt",
+          "uv pip install --python env/Scripts/python.exe spaces",
+          // CUDA-extension wheels (cu128/torch2.8/cp312/win_amd64), --no-deps so torch stays pinned.
+          "uv pip install --python env/Scripts/python.exe --no-deps " +
+            "\"" + WHL + "/flash_attn-latest/flash_attn-2.8.3%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
+            "\"" + WHL + "/flex_gemm-latest/flex_gemm-1.0.0%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
+            "\"" + WHL + "/cumesh-latest/cumesh-0.0.1%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
+            "\"" + WHL + "/o_voxel-latest/o_voxel-0.0.1%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
+            "\"" + WHL + "/nvdiffrast-latest/nvdiffrast-0.4.0%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
+            "\"" + WHL + "/nvdiffrec_render-latest/nvdiffrec_render-0.0.1%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
+            "\"" + WHL + "/natten-latest/natten-0.21.6%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\"",
+          // utils3d (pure-python, official upstream URL from the Pixal3D README).
+          "uv pip install --python env/Scripts/python.exe \"https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl\""
+        ]
       }
     }
   ]
