@@ -11,8 +11,12 @@ module.exports = {
       params: {
         message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2; export CUDA_HOME=/usr/local/cuda-12.4; export PATH=$CUDA_HOME/bin:$PATH; export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH; cd /opt/pixal3d/Pixal3D; python app.py"',
         on: [{
-          // Capture the first http URL printed (the local Gradio URL).
-          "event": "/(http:\\/\\/[0-9.:]+)/",
+          // CLAUDE-NOTE: Match the canonical system/examples/mochi/start.js pattern
+          // EXACTLY — no capture group, and read the whole match via input.event[0].
+          // The capture-group + input.event[1] form left the template unsubstituted at
+          // runtime ("{{input.event[1]}}"), which Pinokio then tried to stat as a path.
+          // The first http URL printed is the local Gradio URL.
+          "event": "/http:\/\/[0-9.:]+/",
           "done": true
         }]
       }
@@ -20,9 +24,9 @@ module.exports = {
     {
       method: "local.set",
       params: {
-        // input.event is the regex match object from the previous step; index 1 is the
-        // captured URL group.
-        url: "{{input.event[1]}}"
+        // input.event is the regex match object from the previous step; index 0 is the
+        // full matched URL.
+        url: "{{input.event[0]}}"
       }
     }
   ]
