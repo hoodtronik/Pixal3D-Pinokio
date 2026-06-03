@@ -71,9 +71,27 @@ module.exports = {
         message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2; huggingface-cli download microsoft/TRELLIS.2-4B || true; huggingface-cli download TencentARC/Pixal3D || true; echo WEIGHTS_PREFETCH_DONE"'
       }
     },
-    // 7) Sentinel file so pinokio.js knows the install completed successfully.
+    // 7) VERIFY the install really succeeded. CLAUDE-NOTE: Pinokio's shell.run does NOT
+    //    halt the script on a non-zero exit, so earlier steps can fail and the script
+    //    still reaches here. We therefore gate the INSTALLED sentinel on a real check
+    //    inside WSL (key packages import + app.py present) that prints a unique token,
+    //    captured via the `on` matcher. \" escapes the inner python -c quotes.
+    {
+      method: "shell.run",
+      params: {
+        message: 'wsl -d pixal3d -u root -- bash -lc "source /root/miniconda3/etc/profile.d/conda.sh; conda activate trellis2 && python -c \\"import torch, natten, utils3d, o_voxel\\" && test -f /opt/pixal3d/Pixal3D/app.py && echo PIXAL3D_INSTALL_VERIFIED"',
+        on: [{
+          "event": "/PIXAL3D_INSTALL_VERIFIED/",
+          "done": true
+        }]
+      }
+    },
+    // 8) Only write the sentinel when step 7 actually matched the verification token.
+    //    If verification failed, input.event is undefined -> `when` is falsy -> skipped,
+    //    so the menu keeps offering Install instead of falsely showing "installed".
     {
       method: "fs.write",
+      when: "{{input.event && input.event[0]}}",
       params: {
         path: "INSTALLED",
         text: "pixal3d"
