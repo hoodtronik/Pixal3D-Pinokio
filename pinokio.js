@@ -70,6 +70,10 @@ module.exports = {
         text: "Start",
         href: "start.js",
       }, {
+        icon: "fa-solid fa-feather",
+        text: "Start (Low VRAM)",
+        href: "start.js?low_vram=true",
+      }, {
         icon: "fa-brands fa-hugging-face",
         text: "Set HF Token",
         href: "hf_token.js",

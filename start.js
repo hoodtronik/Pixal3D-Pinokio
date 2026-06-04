@@ -25,8 +25,11 @@ module.exports = {
           "SPARSE_CONV_BACKEND": "spconv",
           "GRADIO_ALLOWED_PATHS": "{{cwd}}/app"
         },
+        // CLAUDE-NOTE: `--low_vram` is appended when the menu launches start.js?low_vram=true
+        // (loads models on demand → generation peak ~13GB instead of ~all-resident). app.py
+        // auto-lowers the UI's default resolution/texture in low-VRAM mode.
         message: [
-          "python app.py"
+          "python app.py {{args.low_vram ? '--low_vram' : ''}}"
         ],
         on: [{
           "event": "/http:\/\/[0-9.:]+/",
