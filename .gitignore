@@ -12,3 +12,7 @@ ENVIRONMENT
 CLAUDE.md
 GEMINI.md
 QWEN.md
+
+# Python bytecode cache
+__pycache__/
+*.pyc
