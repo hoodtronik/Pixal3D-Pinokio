@@ -52,11 +52,23 @@ module.exports = {
             "\"" + WHL + "/nvdiffrast-latest/nvdiffrast-0.4.0%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
             "\"" + WHL + "/nvdiffrec_render-latest/nvdiffrec_render-0.0.1%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
             "\"" + WHL + "/natten-latest/natten-0.21.6%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\"",
+          // spconv sparse-conv backend (+ its cumm/pccm deps). CLAUDE-NOTE: we run the
+          // pipeline with SPARSE_CONV_BACKEND=spconv (set in start.js) instead of the default
+          // flex_gemm, because flex_gemm's Triton kernels fail to JIT-compile under Pinokio's
+          // bundled VS2019 ("__triton_launcher.c ... error C2059"). spconv is prebuilt CUDA,
+          // no runtime compilation.
+          "uv pip install --python env/Scripts/python.exe pccm",
+          "uv pip install --python env/Scripts/python.exe --no-deps " +
+            "\"" + WHL + "/spconv-latest/spconv-2.3.8%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
+            "\"" + WHL + "/cumm-latest/cumm-0.8.2%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\"",
           // utils3d (pure-python, official upstream URL from the Pixal3D README).
           "uv pip install --python env/Scripts/python.exe \"https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl\"",
           // Whitelist loopback in Gradio's safehttpx SSRF guard, so file uploads work when
           // the app is served at 127.0.0.1 (otherwise: "Hostname 127.0.0.1 failed validation").
-          "env\\Scripts\\python.exe ..\\patch_gradio_ssrf.py"
+          "env\\Scripts\\python.exe ..\\patch_gradio_ssrf.py",
+          // The prebuilt nvdiffrec_render wheel ships only the compiled _C; vendor the
+          // pure-python modules (nvdiffrec_render.light etc.) the renderer needs.
+          "env\\Scripts\\python.exe ..\\fix_nvdiffrec_render.py"
         ]
       }
     },
