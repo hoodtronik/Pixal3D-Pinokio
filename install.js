@@ -40,7 +40,9 @@ module.exports = {
           // Triton (flex_gemm runtime) + the upstream pure-Python deps + HF spaces shim.
           "uv pip install --python env/Scripts/python.exe -U \"triton-windows<3.7\"",
           "uv pip install --python env/Scripts/python.exe -r requirements.txt",
-          "uv pip install --python env/Scripts/python.exe spaces",
+          // `spaces` (app.py uses @spaces.GPU) + `einops` (required by the NAF upsampler
+          // that Pixal3D pulls from valeoai/NAF via torch.hub; not in upstream requirements).
+          "uv pip install --python env/Scripts/python.exe spaces einops",
           // CUDA-extension wheels (cu128/torch2.8/cp312/win_amd64), --no-deps so torch stays pinned.
           "uv pip install --python env/Scripts/python.exe --no-deps " +
             "\"" + WHL + "/flash_attn-latest/flash_attn-2.8.3%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
@@ -53,6 +55,14 @@ module.exports = {
           // utils3d (pure-python, official upstream URL from the Pixal3D README).
           "uv pip install --python env/Scripts/python.exe \"https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl\""
         ]
+      }
+    },
+    // 3) Guided Hugging Face token setup (Pixal3D needs gated briaai/RMBG-2.0). Pops a
+    //    modal with instructions, validates the token, and re-prompts on failure.
+    {
+      method: "script.start",
+      params: {
+        uri: "hf_token.js"
       }
     }
   ]

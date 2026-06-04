@@ -10,7 +10,16 @@ module.exports = {
       install: info.running("install.js"),
       start: info.running("start.js"),
       update: info.running("update.js"),
-      reset: info.running("reset.js")
+      reset: info.running("reset.js"),
+      hf_token: info.running("hf_token.js")
+    }
+    if (running.hf_token) {
+      return [{
+        default: true,
+        icon: "fa-brands fa-hugging-face",
+        text: "Hugging Face login",
+        href: "hf_token.js",
+      }]
     }
     if (running.install) {
       return [{
@@ -60,6 +69,10 @@ module.exports = {
         icon: "fa-solid fa-power-off",
         text: "Start",
         href: "start.js",
+      }, {
+        icon: "fa-brands fa-hugging-face",
+        text: "Set HF Token",
+        href: "hf_token.js",
       }, {
         icon: "fa-solid fa-plug",
         text: "Update",

@@ -31,11 +31,26 @@ launches `app.py`.
 
 In Pinokio:
 
-1. **Install** — clones Pixal3D, builds the 3.12 venv, installs torch + all CUDA wheels.
+1. **Install** — clones Pixal3D, builds the 3.12 venv, installs torch + all CUDA wheels,
+   then prompts for your **Hugging Face token** (see below).
 2. **Start** — launches the Gradio demo; when ready, **Open Web UI** appears.
 3. In the web UI, upload a single image and generate a `.glb` 3D asset.
 4. **Update** — pulls the latest launcher + Pixal3D code.
 5. **Reset** — deletes `app/` (clone + venv) for a clean reinstall.
+6. **Set HF Token** — re-run the Hugging Face token setup anytime (e.g. if it expires).
+
+### Hugging Face access (required)
+
+Pixal3D's background remover uses the **gated** model
+[`briaai/RMBG-2.0`](https://huggingface.co/briaai/RMBG-2.0), so the app needs a Hugging Face
+token whose account has accepted that model's license. During install a popup guides you:
+
+1. Open the [RMBG-2.0 page](https://huggingface.co/briaai/RMBG-2.0) and click **"Agree and
+   access repository"** (free, instant).
+2. Create a **READ** token at <https://huggingface.co/settings/tokens>.
+3. Paste it into the prompt. It's validated against the gated repo; if it doesn't work the
+   prompt reappears with guidance. The token is stored locally (in the app's HF cache) and
+   is never committed to git.
 
 ### Low-VRAM mode
 

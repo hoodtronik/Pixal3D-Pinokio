@@ -12,6 +12,12 @@ module.exports = {
         venv: "env",
         path: "app",
         build: true,
+        // CLAUDE-NOTE: app.py loads HDRI .exr env maps via OpenCV, but opencv-python gates
+        // its OpenEXR codec behind this env var, which must be set BEFORE cv2 is imported.
+        // app.py sets it too late (after `import cv2`), so we set it at the process level.
+        env: {
+          "OPENCV_IO_ENABLE_OPENEXR": "1"
+        },
         message: [
           "python app.py"
         ],
