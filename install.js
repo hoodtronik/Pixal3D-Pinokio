@@ -53,7 +53,10 @@ module.exports = {
             "\"" + WHL + "/nvdiffrec_render-latest/nvdiffrec_render-0.0.1%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
             "\"" + WHL + "/natten-latest/natten-0.21.6%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\"",
           // utils3d (pure-python, official upstream URL from the Pixal3D README).
-          "uv pip install --python env/Scripts/python.exe \"https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl\""
+          "uv pip install --python env/Scripts/python.exe \"https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl\"",
+          // Whitelist loopback in Gradio's safehttpx SSRF guard, so file uploads work when
+          // the app is served at 127.0.0.1 (otherwise: "Hostname 127.0.0.1 failed validation").
+          "env\\Scripts\\python.exe ..\\patch_gradio_ssrf.py"
         ]
       }
     },
