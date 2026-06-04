@@ -31,8 +31,10 @@ module.exports = {
         path: "app",
         build: true,
         message: [
-          // 3.12 venv (uv fetches a managed CPython 3.12 if needed).
-          "uv venv --python 3.12 env",
+          // 3.12 venv (uv fetches a managed CPython 3.12 if needed). --seed installs pip
+          // into the venv: app.py runs `python -m pip install ... utils3d` at startup, which
+          // fails on a pip-less uv venv ("No module named pip").
+          "uv venv --python 3.12 --seed env",
           // PyTorch 2.8.0 + cu128 first — every CUDA wheel is built against it.
           "uv pip install --python env/Scripts/python.exe torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128",
           // Triton (flex_gemm runtime) + the upstream pure-Python deps + HF spaces shim.
