@@ -16,13 +16,11 @@ module.exports = {
         // - OPENCV_IO_ENABLE_OPENEXR: app.py loads HDRI .exr env maps via OpenCV, which gates
         //   its OpenEXR codec behind this var; it must be set BEFORE cv2 is imported, but
         //   app.py sets it too late, so we set it at the process level.
-        // - SPARSE_CONV_BACKEND=spconv: use prebuilt spconv for sparse conv instead of the
-        //   default flex_gemm, whose Triton kernels fail to JIT-compile under VS2019.
         // - GRADIO_ALLOWED_PATHS: let Gradio serve the rendered previews/GLB the app writes
         //   under app/ (otherwise output files 403). {{cwd}} is the launcher root.
+        // (We use the default flex_gemm conv backend — correct geometry; see install.js.)
         env: {
           "OPENCV_IO_ENABLE_OPENEXR": "1",
-          "SPARSE_CONV_BACKEND": "spconv",
           "GRADIO_ALLOWED_PATHS": "{{cwd}}/app"
         },
         // CLAUDE-NOTE: `--low_vram` is appended when the menu launches start.js?low_vram=true

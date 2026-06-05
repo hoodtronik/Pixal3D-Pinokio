@@ -37,8 +37,11 @@ module.exports = {
           "uv venv --python 3.12 --seed env",
           // PyTorch 2.8.0 + cu128 first — every CUDA wheel is built against it.
           "uv pip install --python env/Scripts/python.exe torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128",
-          // Triton (flex_gemm runtime) + the upstream pure-Python deps + HF spaces shim.
-          "uv pip install --python env/Scripts/python.exe -U \"triton-windows<3.7\"",
+          // Triton for flex_gemm's sparse-conv kernels. CLAUDE-NOTE: the version MUST match
+          // torch (torch 2.8 -> triton 3.4). triton-windows 3.6 (pairs with torch 2.10) causes
+          // flex_gemm's Triton launcher to fail compiling ("__triton_launcher.c C2059") and
+          // forces a broken fallback. Pin 3.4 to match torch 2.8.
+          "uv pip install --python env/Scripts/python.exe \"triton-windows==3.4.0.post21\"",
           "uv pip install --python env/Scripts/python.exe -r requirements.txt",
           // `spaces` (app.py uses @spaces.GPU) + `einops` (required by the NAF upsampler
           // that Pixal3D pulls from valeoai/NAF via torch.hub; not in upstream requirements).
@@ -52,15 +55,10 @@ module.exports = {
             "\"" + WHL + "/nvdiffrast-latest/nvdiffrast-0.4.0%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
             "\"" + WHL + "/nvdiffrec_render-latest/nvdiffrec_render-0.0.1%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
             "\"" + WHL + "/natten-latest/natten-0.21.6%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\"",
-          // spconv sparse-conv backend (+ its cumm/pccm deps). CLAUDE-NOTE: we run the
-          // pipeline with SPARSE_CONV_BACKEND=spconv (set in start.js) instead of the default
-          // flex_gemm, because flex_gemm's Triton kernels fail to JIT-compile under Pinokio's
-          // bundled VS2019 ("__triton_launcher.c ... error C2059"). spconv is prebuilt CUDA,
-          // no runtime compilation.
-          "uv pip install --python env/Scripts/python.exe pccm",
-          "uv pip install --python env/Scripts/python.exe --no-deps " +
-            "\"" + WHL + "/spconv-latest/spconv-2.3.8%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\" " +
-            "\"" + WHL + "/cumm-latest/cumm-0.8.2%2Bcu128torch2.8-cp312-cp312-win_amd64.whl\"",
+          // CLAUDE-NOTE: we use the default flex_gemm sparse-conv backend (mandatory for
+          // correct geometry — the model weights are stored in flex_gemm's permuted layout;
+          // spconv/torchsparse have no weight-translation and produce garbage). flex_gemm's
+          // Triton kernels compile fine once triton-windows matches torch (pinned above).
           // utils3d (pure-python, official upstream URL from the Pixal3D README).
           "uv pip install --python env/Scripts/python.exe \"https://github.com/LDYang694/Storages/releases/download/20260430/utils3d-0.0.2-py3-none-any.whl\"",
           // Whitelist loopback in Gradio's safehttpx SSRF guard, so file uploads work when
