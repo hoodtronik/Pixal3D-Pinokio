@@ -16,3 +16,6 @@ QWEN.md
 # Python bytecode cache
 __pycache__/
 *.pyc
+
+# HF/torch/gradio caches + the per-app HF token (machine-specific, never commit)
+cache/
