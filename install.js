@@ -68,7 +68,10 @@ module.exports = {
           // pure-python modules (nvdiffrec_render.light etc.) the renderer needs.
           "env\\Scripts\\python.exe ..\\fix_nvdiffrec_render.py",
           // Fix the Decimation slider's stuck "1M" label in the web UI (cosmetic id typo).
-          "env\\Scripts\\python.exe ..\\patch_pixal3d_ui.py"
+          "env\\Scripts\\python.exe ..\\patch_pixal3d_ui.py",
+          // Export GLB textures as PNG instead of WebP so Unreal/Blender/etc. can import
+          // them (upstream's EXT_texture_webp is unsupported by most importers).
+          "env\\Scripts\\python.exe ..\\patch_glb_export.py"
         ]
       }
     },
